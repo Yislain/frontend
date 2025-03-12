@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buscarPorId, cerrarSesion } from "@/api/peticiones";
+import { cerrarSesion } from "@/api/peticiones";
 
-export default function Usuario() {
+export default function Perfil() {
     const router = useRouter();
     const [usuario, setUsuario] = useState(null);
 
@@ -15,26 +15,7 @@ export default function Usuario() {
             return;
         }
 
-        const usuarioData = JSON.parse(usuarioGuardado);
-        if (!usuarioData.id) {
-            console.error("❌ Error: El usuario no tiene un ID válido");
-            localStorage.removeItem("usuario");
-            router.push("/login");
-            return;
-        }
-
-        console.log("📤 Buscando datos del usuario:", usuarioData.id);
-        
-        buscarPorId(usuarioData.id).then(res => {
-            if (res && res.estado) {
-                console.log("✅ Datos del usuario recibidos:", res);
-                setUsuario(res);
-            } else {
-                console.error("❌ Error al obtener usuario:", res?.mensaje || "Respuesta inválida");
-                router.push("/login");
-            }
-        });
-
+        setUsuario(JSON.parse(usuarioGuardado));
     }, []);
 
     const handleLogout = async () => {
@@ -45,7 +26,7 @@ export default function Usuario() {
 
     return (
         <div style={{ textAlign: "center", marginTop: "50px" }}>
-            <h1>Datos del Usuario</h1>
+            <h1>Perfil del Usuario</h1>
             {usuario ? (
                 <>
                     <p><strong>Nombre:</strong> {usuario.username}</p>

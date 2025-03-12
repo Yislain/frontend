@@ -1,72 +1,82 @@
 "use client";
 import { useEffect, useState } from "react";
-import { obtenerUsuarios, borrarUsuario, editarUsuario, peticionRegistro } from "@/api/peticiones";
-import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { obtenerUsuarios, borrarUsuario, editarUsuario, peticionRegistro, cerrarSesion } from "@/api/peticiones";
 
 export default function Admin() {
-    const autorizado = useAuth(["admin"]);
     const router = useRouter();
     const [usuarios, setUsuarios] = useState([]);
-    const [editando, setEditando] = useState(null); // Almacena el usuario en edición
+    const [editando, setEditando] = useState(null);
     const [nuevoUsuario, setNuevoUsuario] = useState({ username: "", email: "", password: "", tipoUsuario: "usuario" });
 
     useEffect(() => {
-        async function cargarUsuarios() {
-            try {
-                const response = await obtenerUsuarios();
-                console.log("Usuarios cargados:", response.data);
-                setUsuarios(response.data);
-            } catch (error) {
-                console.error("Error al obtener usuarios:", error);
-            }
-        }
         cargarUsuarios();
     }, []);
 
-    if (autorizado === null) {
-        return <p>Verificando autorización...</p>;
+    async function cargarUsuarios() {
+        try {
+            const response = await obtenerUsuarios();
+            console.log("📥 Usuarios obtenidos:", response);
+            setUsuarios(response || []);
+        } catch (error) {
+            console.error("❌ Error al obtener usuarios:", error);
+        }
     }
 
-    if (!autorizado) {
-        router.push("/login");
-        return null;
-    }
+    const registrarUsuario = async () => {
+        try {
+            console.log("📤 Enviando nuevo usuario:", nuevoUsuario);
+            const response = await peticionRegistro(nuevoUsuario);
+
+            if (!response || !response.estado) {
+                alert("❌ Error al registrar usuario");
+                return;
+            }
+
+            alert("✅ Usuario registrado correctamente");
+
+            // Recargar la lista de usuarios para evitar errores de `undefined`
+            cargarUsuarios();
+            
+            // Reiniciar el formulario
+            setNuevoUsuario({ username: "", email: "", password: "", tipoUsuario: "usuario" });
+        } catch (error) {
+            console.error("❌ Error al registrar usuario:", error);
+        }
+    };
 
     const eliminarUsuario = async (id) => {
         try {
             await borrarUsuario(id);
             setUsuarios(usuarios.filter(user => user._id !== id));
-            alert("Usuario eliminado correctamente");
+            alert("🗑 Usuario eliminado correctamente");
         } catch (error) {
-            console.error("Error al eliminar usuario:", error);
+            console.error("❌ Error al eliminar usuario:", error);
         }
     };
 
     const actualizarUsuario = async () => {
         try {
-            await editarUsuario(editando._id, editando);
-            setUsuarios(usuarios.map(user => (user._id === editando._id ? editando : user)));
+            const response = await editarUsuario(editando._id, editando);
+            setUsuarios(usuarios.map(user => (user._id === editando._id ? response.usuario : user)));
             setEditando(null);
-            alert("Usuario actualizado correctamente");
+            alert("✅ Usuario actualizado correctamente");
         } catch (error) {
-            console.error("Error al actualizar usuario:", error);
+            console.error("❌ Error al actualizar usuario:", error);
         }
     };
 
-    const registrarUsuario = async () => {
+    const handleLogout = async () => {
         try {
-            const response = await peticionRegistro(nuevoUsuario);
-            alert("Usuario registrado correctamente");
-            setUsuarios([...usuarios, response.data]);
-            setNuevoUsuario({ username: "", email: "", password: "", tipoUsuario: "usuario" });
+            await cerrarSesion();
+            router.push("/login");
         } catch (error) {
-            console.error("Error al registrar usuario:", error);
+            console.error("❌ Error al cerrar sesión:", error);
         }
     };
 
     return (
-        <div>
+        <div style={{ textAlign: "center", marginTop: "50px" }}>
             <h1>Panel de Administración</h1>
 
             <h2>Agregar Nuevo Usuario</h2>
@@ -80,37 +90,49 @@ export default function Admin() {
             <button onClick={registrarUsuario}>Registrar Usuario</button>
 
             <h2>Lista de Usuarios</h2>
-            <table border="1">
+            <table border="1" style={{ margin: "0 auto" }}>
                 <thead>
                     <tr>
                         <th>Nombre</th>
                         <th>Email</th>
+                        <th>Tipo de Usuario</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {usuarios.map(user => (
-                        <tr key={user._id}>
-                            <td>{user.username}</td>
-                            <td>{user.email}</td>
-                            <td>
-                                <button onClick={() => setEditando(user)}>Editar</button>
-                                <button onClick={() => eliminarUsuario(user._id)}>Eliminar</button>
-                            </td>
-                        </tr>
-                    ))}
+                    {usuarios.length > 0 ? (
+                        usuarios.map(user => (
+                            <tr key={user?._id}>
+                                <td>{user?.username || "Sin nombre"}</td>
+                                <td>{user?.email || "Sin email"}</td>
+                                <td>{user?.tipoUsuario || "Sin tipo"}</td>
+                                <td>
+                                    <button onClick={() => setEditando(user)}>Editar</button>
+                                    <button onClick={() => eliminarUsuario(user._id)}>Eliminar</button>
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr><td colSpan="4">No hay usuarios registrados</td></tr>
+                    )}
                 </tbody>
             </table>
 
             {editando && (
                 <div>
                     <h2>Editar Usuario</h2>
-                    <input type="text" placeholder="Nombre" value={editando.username} onChange={(e) => setEditando({ ...editando, username: e.target.value })} />
-                    <input type="email" placeholder="Email" value={editando.email} onChange={(e) => setEditando({ ...editando, email: e.target.value })} />
-                    <button onClick={actualizarUsuario}>Actualizar Usuario</button>
+                    <input type="text" value={editando.username} onChange={(e) => setEditando({ ...editando, username: e.target.value })} />
+                    <input type="email" value={editando.email} onChange={(e) => setEditando({ ...editando, email: e.target.value })} />
+                    <select value={editando.tipoUsuario} onChange={(e) => setEditando({ ...editando, tipoUsuario: e.target.value })}>
+                        <option value="usuario">Usuario</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <button onClick={actualizarUsuario}>Actualizar</button>
                     <button onClick={() => setEditando(null)}>Cancelar</button>
                 </div>
             )}
+
+            <button onClick={handleLogout}>Cerrar Sesión</button>
         </div>
     );
 }
