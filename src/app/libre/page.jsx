@@ -19,7 +19,7 @@ export default function Libre() {
 
     return (
         <div style={{ textAlign: "center", marginTop: "50px" }}>
-            <h1>Ruta Libre</h1>
+            <h1>Ruta libre</h1>
             <p>{mensaje}</p>
         </div>
     );

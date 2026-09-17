@@ -19,7 +19,7 @@ export default function UsuariosLogueados() {
 
     return (
         <div style={{ textAlign: "center", marginTop: "50px" }}>
-            <h1>Usuarios Logueados</h1>
+            <h1>Usuarios logueados</h1>
             {usuarios.length > 0 ? (
                 <table border="1" style={{ margin: "auto", marginTop: "20px" }}>
                     <thead>
